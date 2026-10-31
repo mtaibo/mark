@@ -353,8 +353,9 @@ extension Node {
     /// the final exam as much as possible: every other top-level part first aims at its own pass
     /// mark (`target` on its scale, so with a 10 already in one of two labs the other needs a 0),
     /// and the exam makes up the rest. When even a 10 in the exam isn't enough, it stays at a 10
-    /// and the other pending leaves rise together. `nil` when `target` is out of reach, an empty
-    /// plan when nothing is pending.
+    /// and the other pending leaves rise together. With no final exam pending there's nothing to
+    /// spare: every pending leaf needs the same, just enough. `nil` when `target` is out of reach,
+    /// an empty plan when nothing is pending.
     public func passPlan(_ inputs: [String: Double], target: Double) -> [String: Double]? {
         let pending = Set(pendingLeaves(inputs))
         guard !pending.isEmpty else { return [:] }
@@ -369,6 +370,11 @@ extension Node {
         let parts = children.isEmpty ? [self] : children
         let isExam = { (part: Node) in part.grades.contains { $0.isFinalExam == true } }
         let examLeaves = Set(parts.filter(isExam).flatMap { $0.allLeafNames() }).intersection(pending)
+        // Aiming each part at a 5 only makes sense to leave the exam less to do; without one it
+        // asks for far more than it takes (an 8 in one exam and still a 5 in the other).
+        if examLeaves.isEmpty, let even = neededFraction(inputs, target: target) {
+            return Dictionary(uniqueKeysWithValues: pending.map { ($0, even) })
+        }
 
         // Each other part, on its own, up to its pass mark.
         var plan: [String: Double] = [:]

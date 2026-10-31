@@ -58,6 +58,18 @@ struct PassPlanTests {
         #expect(abs(plan["Trabajo"]! - 2.0 / 3) < 0.001)
     }
 
+    @Test func withoutAFinalExamThePendingPartsShareWhatsLeft() throws {
+        // Two exams (45 % each) and a book (10 %), an 8 in the first: 3,6 in, 1,4 to go over 55 %.
+        let continuous = Node.group(Group(name: "A", combination: .weightedAverage, children: [
+            WeightedChild(weight: 0.45, node: .grade(Grade(name: "1er Examen"))),
+            WeightedChild(weight: 0.45, node: .grade(Grade(name: "2do Examen"))),
+            WeightedChild(weight: 0.1, node: .grade(Grade(name: "Libro"))),
+        ]))
+        let plan = try #require(continuous.passPlan(["1er Examen": 8], target: 5))
+        #expect(abs(plan["2do Examen"]! - 1.4 / 5.5) < 0.001)
+        #expect(abs(plan["Libro"]! - 1.4 / 5.5) < 0.001)
+    }
+
     @Test func thePlanReachesTheTargetForEveryReferenceSubject() {
         for subject in Subject.all {
             guard let plan = subject.root.passPlan([:], target: 5) else { continue }
