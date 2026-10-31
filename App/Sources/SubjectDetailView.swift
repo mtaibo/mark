@@ -76,8 +76,8 @@ struct SubjectDetailView: View {
                         .tourTarget("subject.summary")
                 }
 
-                // "Por definir" only has an exam card when one of its notes is the final exam.
-                if !record.isSingleGrade, !record.isUndecided || exam != nil {
+                // Only when a part is the final exam (never for "Nota única", which has none).
+                if exam != nil {
                     ExamCard(
                         record: record,
                         exam: exam,
