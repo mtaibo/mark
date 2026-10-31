@@ -9,21 +9,20 @@ dentro de `P4`). Para verlo y editarlo en el navegador: `make todo`.
 ### P1 · Pantalla principal
 
 - [x] Al soltar una tarjeta después de moverla en el modo de reordenar, la animación da un tirón extraño.
-- [x] Indicador del cuatrimestre absoluto a la altura de «1.º Cuatrimestre»: `Q3` para el primer cuatrimestre de 2.º, etc. (Q mayúscula y el número pegado), con el mismo tamaño y color que el texto del cuatrimestre.
 
 ### P2 · Calendario
 
-- [ ] Rediseño: el calendario ocupa demasiado y las tareas pendientes, que es lo importante, quedan abajo y obligan a hacer scroll.
+- [x] Rediseño: el calendario ocupa demasiado y las tareas pendientes, que es lo importante, quedan abajo y obligan a hacer scroll.
 - [ ] El botón de filtro está mal colocado y pasa desapercibido.
 
 ### P3 · Cuenta
 
-- [ ] Rediseño total: simplificar la información, separarla bien por categorías y hacerla más amigable e intuitiva.
+- [x] Rediseño total: simplificar la información, separarla bien por categorías y hacerla más amigable e intuitiva.
 
 ### P4 · Asignatura
 
-- [ ] Rediseñar el primer módulo grande de las notas: se ve bien, pero el desplegable necesita un repaso.
-- [ ] Rediseñar el bloque del examen final: da profundidad, pero los colores y las formas no acaban de encajar con el resto.
+- [x] Rediseñar el primer módulo grande de las notas: se ve bien, pero el desplegable necesita un repaso.
+- [x] Rediseñar el bloque del examen final: da profundidad, pero los colores y las formas no acaban de encajar con el resto.
 - [x] Menú «…» → «Abrir guía»: crashea a veces y va lento; además, la pantalla de la guía necesita retoques.
 - [x] El pop-up para poner las notas: demasiado liquid glass, se siente lento y tosco; rediseñarlo.
 - [x] Quitar la barra de scroll.
