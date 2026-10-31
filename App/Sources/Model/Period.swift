@@ -32,6 +32,9 @@ enum StudyType: String, Codable, CaseIterable, Identifiable {
     /// Whether its subjects usually carry credits (ECTS): university degrees and masters do.
     var usesCredits: Bool { self == .university || self == .master }
 
+    /// Whether its subjects usually last the whole year with a grade per term: Bachillerato and ESO.
+    var gradesPerTerm: Bool { self == .highSchool || self == .secondary }
+
     /// The usual years, terms per year and term name, applied when the type is picked. `nil` for
     /// `.other`, which keeps whatever was set.
     var defaults: (years: Int, termsPerYear: Int, termName: String)? {
@@ -164,6 +167,11 @@ struct DegreeSettings: Codable, Equatable {
     /// "2º Año", or whatever the years are called.
     func yearLabel(_ year: Int) -> String {
         "\(year)º \(displayYearName)"
+    }
+
+    /// Each term's name within a year ("1º Trimestre", "2º Trimestre"…), in order.
+    var termLabels: [String] {
+        (1...safeTermsPerYear).map { termLabel($0) }
     }
 
     /// "1º Cuatrimestre", for a degree-wide term number.

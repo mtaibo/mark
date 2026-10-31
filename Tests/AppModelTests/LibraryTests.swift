@@ -242,6 +242,24 @@ struct LibraryTests {
         #expect(library.record(id: last)?.term == 4)
     }
 
+    @Test func schoolSubjectsLastingTheYearStartWithAGradePerTerm() throws {
+        let library = Sandbox().open()
+        var degree = library.degree
+        degree.studyType = .secondary
+        degree.termsPerYear = 3
+        degree.termName = "Trimestre"
+        library.updateDegree(degree)
+        let annual = try #require(library.record(id: library.addSubject(name: "Filosofía", year: 1, term: nil)))
+        #expect(annual.isPerTerm)
+        #expect(annual.subject.root.asGroup?.children.map(\.node.title) == ["1º Trimestre", "2º Trimestre", "3º Trimestre"])
+        // One term only, or a university degree: a single evaluation as before.
+        let termOnly = try #require(library.record(id: library.addSubject(name: "Música", year: 1, term: 2)))
+        #expect(!termOnly.isPerTerm)
+        degree.studyType = .university
+        library.updateDegree(degree)
+        #expect(library.record(id: library.addSubject(name: "Álgebra", year: 1, term: nil))?.isPerTerm == false)
+    }
+
     @Test func applyingATemplateTwiceAddsNothingTheSecondTime() throws {
         let library = Sandbox().open()
         let template = try #require(DegreeTemplate.all.first)

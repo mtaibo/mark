@@ -482,7 +482,11 @@ final class Library {
         let root = Node.group(Group(name: name, combination: .weightedAverage, children: [
             WeightedChild(weight: 1, node: .grade(Grade(name: "Examen", isFinalExam: true))),
         ]))
-        let record = SubjectRecord(subject: Subject(name: name, ectsCredits: ects, root: root), term: term)
+        var record = SubjectRecord(subject: Subject(name: name, ectsCredits: ects, root: root), term: term)
+        // Bachillerato and ESO: a year-long subject starts with a grade per term.
+        if term == nil, degree.studyType.gradesPerTerm, degree.termsPerYear > 1 {
+            record.splitByTerm(degree.termLabels)
+        }
         hasStudy = true
         courses[courseIndex(forYear: year)].subjects.append(record)
         save()

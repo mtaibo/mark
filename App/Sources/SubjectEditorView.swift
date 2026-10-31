@@ -46,6 +46,8 @@ struct SubjectEditorView: View {
                 if yearLong {
                     lastTerm = draft.term
                     draft.term = nil
+                    // Bachillerato and ESO grade their year-long subjects per term.
+                    if degree.studyType.gradesPerTerm, degree.termsPerYear > 1, !draft.isPerTerm { splitByTerm() }
                 } else {
                     if draft.isPerTerm { mergeTerms() }
                     draft.term = lastTerm ?? degree.absoluteTerm(year: year, relative: 1)
@@ -60,8 +62,6 @@ struct SubjectEditorView: View {
         Binding(get: { draft.isPerTerm }, set: { $0 ? splitByTerm() : mergeTerms() })
     }
 
-    private var termCount: Int { max(degree.termsPerYear, 1) }
-
     /// "1º Trimestre", for the `n`th term of the subject's year.
     private func termLabel(_ n: Int) -> String {
         degree.termLabel(degree.absoluteTerm(year: year, relative: n))
@@ -70,25 +70,8 @@ struct SubjectEditorView: View {
     /// What tells one term's copy of a part from another's: "Examen (1º Trimestre)".
     private func termSuffix(_ n: Int) -> String { " (\(termLabel(n)))" }
 
-    /// Turns the evaluation into one copy per term, under a general evaluation that averages them
-    /// (changed below like any other). Grades already entered go to the first term. Leaf names have
-    /// to stay unique, so each copy's carry its term; none is the final exam any more, since the
-    /// sittings belong to the whole subject.
     private func splitByTerm() {
-        let base = draft.subject.root
-        let children = (1...termCount).map { n in
-            var node = base
-            node.updateGrades { $0.isFinalExam = nil }
-            node.renameLeaves { $0 + termSuffix(n) }
-            var term = Group(name: termLabel(n), combination: .weightedAverage, children: [WeightedChild(weight: 1, node: node)])
-            if case .group(let group) = node {
-                term = group
-                term.name = termLabel(n)
-            }
-            return WeightedChild(weight: 1 / Double(termCount), node: .group(term))
-        }
-        draft.subject.root = .group(Group(name: draft.subject.name, combination: .weightedAverage, children: children))
-        draft.isPerTerm = true
+        draft.splitByTerm(degree.termLabels)
     }
 
     /// Keeps the first term's evaluation, with its grades, as the whole subject's.

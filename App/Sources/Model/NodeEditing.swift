@@ -439,3 +439,26 @@ extension Engine.Group {
         return Formula(name: name, expression: expression, variables: variables, minimum: minimum)
     }
 }
+
+extension SubjectRecord {
+    /// Turns the evaluation into one copy per term (`labels`, "1º Trimestre"…), under a general
+    /// evaluation that averages them (changed in the editor like any other). Grades already entered
+    /// go to the first term. Leaf names have to stay unique, so each copy's carry its term; none is
+    /// the final exam any more, since the sittings belong to the whole subject.
+    mutating func splitByTerm(_ labels: [String]) {
+        let base = subject.root
+        let children = labels.enumerated().map { index, label in
+            var node = base
+            node.updateGrades { $0.isFinalExam = nil }
+            node.renameLeaves { $0 + " (\(label))" }
+            var term = Group(name: label, combination: .weightedAverage, children: [WeightedChild(weight: 1, node: node)])
+            if case .group(let group) = node {
+                term = group
+                term.name = label
+            }
+            return WeightedChild(weight: 1 / Double(labels.count), node: .group(term))
+        }
+        subject.root = .group(Group(name: subject.name, combination: .weightedAverage, children: children))
+        isPerTerm = true
+    }
+}

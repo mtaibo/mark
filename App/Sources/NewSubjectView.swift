@@ -38,7 +38,9 @@ struct NewSubjectView: View {
         case .move(_, _, let period): period
         }
         _year = State(initialValue: period.year)
-        _relativeTerm = State(initialValue: period.term.map(degree.relativeTerm))
+        // Bachillerato and ESO subjects usually last the whole year, so new ones start that way.
+        let startsYearLong = { if case .create = placement { degree.studyType.gradesPerTerm } else { false } }()
+        _relativeTerm = State(initialValue: startsYearLong ? nil : period.term.map(degree.relativeTerm))
     }
 
     private var degree: DegreeSettings { library.degree }
