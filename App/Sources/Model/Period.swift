@@ -127,6 +127,9 @@ struct DegreeSettings: Codable, Equatable {
         return "\(years) · \(terms) por año"
     }
 
+    /// "Trimestres", or the plural of whatever the terms are called.
+    var pluralTermName: String { Self.plural(displayTermName) }
+
     private static func plural(_ word: String) -> String {
         if word.hasSuffix("ón") { return word.dropLast(2) + "ones" }
         if let last = word.last, "aeiou".contains(last) { return word + "s" }

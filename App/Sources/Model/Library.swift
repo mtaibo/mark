@@ -875,10 +875,16 @@ struct SubjectProgress {
 
     let session: Convocatoria
 
-    init(_ record: SubjectRecord, session: Convocatoria? = nil, rounding: GradeRounding = .none) {
+    /// `part`, for the numbers of one part alone (a term of a subject graded per term) instead of
+    /// the whole subject's.
+    init(_ record: SubjectRecord, session: Convocatoria? = nil, rounding: GradeRounding = .none, part: Node? = nil) {
         let session = session ?? record.activeSession
-        let root = record.root(for: session)
-        let inputs = Self.inputs(record, session: session)
+        let root = part ?? record.root(for: session)
+        var inputs = Self.inputs(record, session: session)
+        if part != nil {
+            let leaves = Set(root.allLeafNames())
+            inputs = inputs.filter { leaves.contains($0.key) }
+        }
         self.session = session
         let threshold = root.minimumThreshold ?? 5
         let target = rounding.lowestPassing(threshold)
@@ -897,7 +903,7 @@ struct SubjectProgress {
         self.isUndecided = record.isUndecided
         self.isNotPresented = record.isNotPresented(in: session)
         self.missesARequirement = record.missesARequirement
-        self.hasHonors = record.hasHonors && leafCount > 0 && enteredCount == leafCount
+        self.hasHonors = part == nil && record.hasHonors && leafCount > 0 && enteredCount == leafCount
     }
 
     /// What the engine reads for one sitting — without the status and needed-grade search, for

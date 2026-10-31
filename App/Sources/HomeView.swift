@@ -286,6 +286,9 @@ struct HomeView: View {
             .navigationDestination(for: SubjectRecord.ID.self) { id in
                 SubjectDetailView(recordID: id)
             }
+            .navigationDestination(for: SubjectRoute.self) { route in
+                SubjectDetailView(recordID: route.id, term: route.term)
+            }
             .navigationDestination(isPresented: $isChoosingView) {
                 HomeViewsScreen(periods: periods, current: currentSelection) { selection in
                     withAnimation(.snappy) {
@@ -349,6 +352,13 @@ struct HomeView: View {
         .tourTarget("home.header")
     }
 
+    /// A subject graded per term opens on the term on screen; anything else, and every subject in
+    /// a custom view, opens whole.
+    private func route(to record: SubjectRecord, in selection: CustomSelection?) -> SubjectRoute {
+        let term = selection == nil && record.isPerTerm ? period.term.map(library.degree.relativeTerm) : nil
+        return SubjectRoute(id: record.id, term: term)
+    }
+
     /// `selection` set for a custom view: dragging reorders the view itself, not the subjects'
     /// years, and there's no + (subjects are added to a view from "Vista").
     /// Dragging always works: it keeps the order on screen as the new custom one and switches to it.
@@ -371,7 +381,7 @@ struct HomeView: View {
             },
             onDelete: { deleting = $0 },
             normal: { record in
-                NavigationLink(value: record.id) {
+                NavigationLink(value: route(to: record, in: selection)) {
                     SubjectTile(record: record, isCompact: layout == .list, rounding: library.degree.rounding)
                 }
                 .buttonStyle(TilePressStyle())

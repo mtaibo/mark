@@ -5,8 +5,16 @@ import SwiftUI
 /// One subject, as a few calm cards: where you stand (folded until you want the detail), the final
 /// exam with its two sittings, and one card per other part showing its grade. Nothing here edits
 /// the structure or the dates — that lives in the "…" menu; tapping a card opens just its grade.
+/// A subject to open, and for one graded per term, the term of its year (1-based) it's opened from.
+struct SubjectRoute: Hashable {
+    let id: SubjectRecord.ID
+    var term: Int?
+}
+
 struct SubjectDetailView: View {
     let recordID: SubjectRecord.ID
+    /// Set for a subject graded per term opened from one of its terms: only that term's parts show.
+    var term: Int?
 
     @Environment(Library.self) private var library
     @Environment(\.isSimulating) private var isSimulating
@@ -32,8 +40,10 @@ struct SubjectDetailView: View {
 
     private func content(_ record: SubjectRecord) -> some View {
         let session = record.activeSession
-        let progress = SubjectProgress(record, session: session, rounding: library.degree.rounding)
-        let items = PartItem.items(of: record, session: record.activeSession)
+        let scope = PartItem.termScope(of: record, session: session, term: term, termsPerYear: library.degree.termsPerYear)
+        // Opened from a term, the card on top is that term's grade.
+        let progress = SubjectProgress(record, session: session, rounding: library.degree.rounding, part: scope?.node)
+        let items = scope?.items ?? PartItem.items(of: record, session: session)
         // "Nota única": one card for the final grade, no exam sittings.
         let exam = record.isSingleGrade ? nil : items.first(where: \.isExam)
         let others = items.filter { $0.id != exam?.id }
@@ -60,8 +70,8 @@ struct SubjectDetailView: View {
                     GradeCard(
                         progress: progress,
                         session: session,
-                        formula: record.subject.root.asFormula,
-                        needs: NeededGrade.rows(for: record, session: session, progress: progress, items: items)
+                        formula: (scope?.node ?? record.subject.root).asFormula,
+                        needs: NeededGrade.rows(for: scope?.node ?? record.root(for: session), progress: progress, items: items)
                     )
                         .tourTarget("subject.summary")
                 }
@@ -101,6 +111,10 @@ struct SubjectDetailView: View {
                     }
                     .tourTarget("subject.parts")
                 }
+
+                if let earlier = scope?.earlier, !earlier.isEmpty {
+                    EarlierTermsCard(terms: earlier, record: record, session: session, title: "\(library.degree.pluralTermName) anteriores")
+                }
             }
             .padding(.horizontal)
             .padding(.bottom, 24)
@@ -110,7 +124,7 @@ struct SubjectDetailView: View {
         .blur(radius: gradeTarget == nil ? 0 : 2.5)
         .background(Color(.systemGroupedBackground))
         .overlay {
-            GradePopup(recordID: recordID, target: gradeTarget) { close() }
+            GradePopup(recordID: recordID, term: term, target: gradeTarget) { close() }
         }
 
         .navigationBarTitleDisplayMode(.inline)
@@ -191,7 +205,7 @@ struct SubjectDetailView: View {
         .fullScreenCover(isPresented: Binding(get: { simulation != nil }, set: { if !$0 { simulation = nil } })) {
             if let simulation {
                 NavigationStack {
-                    SubjectDetailView(recordID: recordID)
+                    SubjectDetailView(recordID: recordID, term: term)
                 }
                 .environment(simulation)
                 .environment(\.isSimulating, true)
@@ -583,9 +597,10 @@ private struct NeededGrade: Identifiable {
     let value: Double
     let scaleMax: Double
 
-    static func rows(for record: SubjectRecord, session: Convocatoria, progress: SubjectProgress, items: [PartItem]) -> [NeededGrade] {
+    /// `root`: the evaluation the card on top is about — the subject's, or the term's on screen.
+    static func rows(for root: Node, progress: SubjectProgress, items: [PartItem]) -> [NeededGrade] {
         guard progress.status == .possible,
-              let plan = record.root(for: session).passPlan(progress.inputs, target: progress.target)
+              let plan = root.passPlan(progress.inputs, target: progress.target)
         else { return [] }
         let ordered = items.filter { !$0.isExam } + items.filter(\.isExam)
         return ordered.compactMap { item in
@@ -945,6 +960,17 @@ private struct PartItem: Identifiable {
         }
     }
 
+    /// A subject graded per term, opened from one of its terms: that term's parts, plus the terms
+    /// before it when it's the year's last. Nil — show the whole subject — when no term is given or
+    /// the general evaluation no longer has one part per term.
+    static func termScope(of record: SubjectRecord, session: Convocatoria, term: Int?, termsPerYear: Int) -> (node: Node, items: [PartItem], earlier: [PartItem])? {
+        guard record.isPerTerm, let term else { return nil }
+        let terms = items(of: record, session: session)
+        guard terms.count == termsPerYear, terms.indices.contains(term - 1) else { return nil }
+        let node = terms[term - 1].node
+        return (node, items(of: node), term == terms.count ? Array(terms.prefix(term - 1)) : [])
+    }
+
     static func items(of root: Node) -> [PartItem] {
         if case .group(let group) = root, group.combination == .undecided {
             return group.children.map { PartItem(id: $0.id.uuidString, node: $0.node, weightPercent: nil) }
@@ -1135,6 +1161,54 @@ private struct PartCard: View {
     }
 }
 
+/// In the last term of a subject graded per term: how the earlier ones went, a row each, and the
+/// whole year's grade below them.
+private struct EarlierTermsCard: View {
+    let terms: [PartItem]
+    let record: SubjectRecord
+    let session: Convocatoria
+    let title: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(title)
+                .font(.headline)
+            ForEach(terms) { term in
+                let summary = PartSummary(node: term.node, record: record, session: session)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(term.node.title)
+                            .font(.subheadline.weight(.medium))
+                        if let weightPercent = term.weightPercent {
+                            WeightChip(percent: weightPercent, isMaximum: term.isMaximum)
+                        }
+                        Spacer(minLength: 8)
+                        Text(summary.text)
+                            .font(.headline.monospacedDigit())
+                            .foregroundStyle(summary.hasAnyGrade ? .primary : .tertiary)
+                    }
+                    ProgressBar(fraction: summary.fraction, tint: summary.tint)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(term.node.title), \(summary.hasAnyGrade ? summary.text : "sin notas")")
+            }
+            Divider()
+            let year = PartSummary(node: record.root(for: session), record: record, session: session)
+            HStack(alignment: .firstTextBaseline) {
+                Text("Nota del curso")
+                    .font(.subheadline.weight(.semibold))
+                Spacer(minLength: 8)
+                Text(year.text)
+                    .font(.headline.monospacedDigit())
+                    .foregroundStyle(year.hasAnyGrade ? .primary : .tertiary)
+            }
+            .accessibilityElement(children: .combine)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .card()
+    }
+}
+
 private struct ProgressBar: View {
     let fraction: Double
     let tint: Color
@@ -1164,6 +1238,7 @@ private struct ProgressBar: View {
 /// keyboard rises along with it, so opening and closing stay one smooth motion.
 private struct GradePopup: View {
     let recordID: SubjectRecord.ID
+    let term: Int?
     let target: GradeTarget?
     let onClose: () -> Void
 
@@ -1172,14 +1247,15 @@ private struct GradePopup: View {
 
     /// The part tapped, in the sitting asked for; the exam's slot finds the exam even when the
     /// extraordinary has a tree of its own.
-    static func item(in record: SubjectRecord, for target: GradeTarget) -> PartItem? {
-        let items = PartItem.items(of: record, session: target.session)
+    static func item(in record: SubjectRecord, term: Int?, termsPerYear: Int, for target: GradeTarget) -> PartItem? {
+        let items = PartItem.termScope(of: record, session: target.session, term: term, termsPerYear: termsPerYear)?.items
+            ?? PartItem.items(of: record, session: target.session)
         return items.first { $0.id == target.partID } ?? (target.isExam ? items.first(where: \.isExam) : nil)
     }
 
     var body: some View {
         ZStack(alignment: .top) {
-            if let target, let record = library.record(id: recordID), let item = Self.item(in: record, for: target) {
+            if let target, let record = library.record(id: recordID), let item = Self.item(in: record, term: term, termsPerYear: library.degree.termsPerYear, for: target) {
                 // A light dim; the screen itself is softly blurred behind it (see `content`).
                 Color.black.opacity(0.14)
                     .ignoresSafeArea()
