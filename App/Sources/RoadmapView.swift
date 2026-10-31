@@ -16,7 +16,6 @@ struct RoadmapVersion: Identifiable {
             "Calendario rediseñado para ver antes lo que tienes pendiente.",
             "Pantalla de asignatura más clara: el resumen de notas, el examen final y la forma de poner las notas.",
             "Editor de fórmulas más cómodo.",
-            "El cuatrimestre de toda la carrera (Q3, Q4…) en la pantalla principal.",
         ]),
         RoadmapVersion(title: "Versión 2", subtitle: "Asistente de IA", items: [
             "Pásale la guía docente y configura la asignatura solo.",
